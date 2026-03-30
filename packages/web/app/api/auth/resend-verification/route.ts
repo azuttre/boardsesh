@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email } = validationResult.data;
+    const email = validationResult.data.email.toLowerCase().trim();
     const db = getDb();
 
     // Check if user exists and is unverified

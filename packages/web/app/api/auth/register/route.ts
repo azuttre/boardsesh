@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, name } = validationResult.data;
+    const { password, name } = validationResult.data;
+    const email = validationResult.data.email.toLowerCase().trim();
     const db = getDb();
 
     // Check if user already exists

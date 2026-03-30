@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const token = searchParams.get("token");
-  const email = searchParams.get("email");
+  const email = searchParams.get("email")?.toLowerCase().trim() ?? null;
 
   if (!token || !email) {
     return NextResponse.redirect(
