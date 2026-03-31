@@ -64,6 +64,9 @@ interface CreateClimbFormProps {
   boardDetails?: BoardDetails;
   forkFrames?: string;
   forkName?: string;
+  forkDescription?: string;
+  /** When set, the form is in edit mode — saving updates the existing climb */
+  editUuid?: string;
   // MoonBoard-specific
   layoutFolder?: string;
   layoutId?: number;
@@ -76,6 +79,8 @@ export default function CreateClimbForm({
   boardDetails,
   forkFrames,
   forkName,
+  forkDescription,
+  editUuid,
   layoutFolder,
   layoutId,
   holdSetImages,
@@ -136,10 +141,12 @@ export default function CreateClimbForm({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<CreateClimbFormValues | null>(null);
 
+  const isEditMode = !!editUuid;
+
   // Aurora-specific state
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [heatmapOpacity, setHeatmapOpacity] = useState(0.7);
-  const [isDraft, setIsDraft] = useState(false);
+  const [isDraft, setIsDraft] = useState(isEditMode);
 
   // MoonBoard-specific state
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
@@ -149,9 +156,11 @@ export default function CreateClimbForm({
   const [isBenchmark, setIsBenchmark] = useState(false);
   const [selectedAngle, setSelectedAngle] = useState<number>(angle);
 
-  // Common state
-  const [climbName, setClimbName] = useState(forkName ? `${forkName} fork` : '');
-  const [description, setDescription] = useState('');
+  // Common state — in edit mode use the original name, not "{name} fork"
+  const [climbName, setClimbName] = useState(
+    isEditMode ? (forkName || '') : (forkName ? `${forkName} fork` : ''),
+  );
+  const [description, setDescription] = useState(forkDescription || '');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
 
   // Construct the bulk import URL (MoonBoard only)
@@ -233,6 +242,7 @@ export default function CreateClimbForm({
       const frames = generateFramesString();
 
       await saveClimb({
+        ...(editUuid ? { uuid: editUuid } : {}),
         layout_id: boardDetails.layout_id,
         name: climbName,
         description: description || '',
@@ -243,7 +253,7 @@ export default function CreateClimbForm({
         angle,
       });
 
-      track('Climb Created', {
+      track(isEditMode ? 'Draft Updated' : 'Climb Created', {
         boardLayout: boardDetails.layout_name || '',
         isDraft: isDraft,
         holdCount: totalHolds,
