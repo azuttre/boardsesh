@@ -105,8 +105,8 @@ export async function GET(request: NextRequest) {
       );
   });
 
-  // Redirect to login with success message
+  // Redirect to app — user is likely already logged in
   return NextResponse.redirect(
-    new URL("/auth/login?verified=true", request.url)
+    new URL("/?verified=true", request.url)
   );
 }

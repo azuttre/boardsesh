@@ -148,18 +148,12 @@ export default function AuthModal({
         return;
       }
 
-      // Check if email verification is required
-      if (data.requiresVerification) {
-        showMessage('Please check your email to verify your account', 'info');
-        setActiveTab('login');
-        setLoginValues(prev => ({ ...prev, email: registerValues.email }));
-        setRegisterValues(initialRegisterValues);
-        setRegisterErrors({});
-        return;
-      }
-
-      // Email verification disabled - auto-login after successful registration
-      showMessage('Account created! Logging you in...', 'success');
+      showMessage(
+        data.emailSent
+          ? 'Account created! Check your email to verify.'
+          : 'Account created! Logging you in...',
+        'success'
+      );
 
       const loginResult = await signIn('credentials', {
         email: registerValues.email,

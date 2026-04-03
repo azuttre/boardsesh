@@ -43,8 +43,6 @@ export default function VerifyRequestContent() {
 
   const getErrorMessage = () => {
     switch (error) {
-      case 'EmailNotVerified':
-        return 'Please verify your email before signing in.';
       case 'InvalidToken':
         return 'The verification link is invalid. Please request a new one.';
       case 'TokenExpired':

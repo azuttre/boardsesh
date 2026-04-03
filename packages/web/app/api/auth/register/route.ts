@@ -7,7 +7,7 @@ import { z } from "zod";
 import { sendVerificationEmail } from "@/app/lib/email/email-service";
 import { checkRateLimit, getClientIp } from "@/app/lib/auth/rate-limiter";
 
-const emailVerificationEnabled = process.env.EMAIL_VERIFICATION_ENABLED === "true";
+const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
-    const verificationToken = emailVerificationEnabled ? crypto.randomUUID() : null;
-    const tokenExpires = emailVerificationEnabled ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null; // 24 hours
+    const verificationToken = smtpConfigured ? crypto.randomUUID() : null;
+    const tokenExpires = smtpConfigured ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null; // 24 hours
 
     // Use transaction to ensure user, credentials, profile, and token are created atomically
     // If any insert fails, all changes are rolled back
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
           id: userId,
           email,
           name: name || email.split("@")[0],
-          emailVerified: emailVerificationEnabled ? null : new Date(),
+          emailVerified: null,
         });
 
         // Insert credentials
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Insert verification token if email verification is enabled
-        if (emailVerificationEnabled && verificationToken && tokenExpires) {
+        if (smtpConfigured && verificationToken && tokenExpires) {
           await tx.insert(schema.verificationTokens).values({
             identifier: email,
             token: verificationToken,
@@ -117,35 +117,23 @@ export async function POST(request: NextRequest) {
       throw insertError;
     }
 
-    // Send verification email if enabled
-    if (emailVerificationEnabled && verificationToken) {
+    // Send verification email in the background if SMTP is configured
+    let emailSent = false;
+    if (smtpConfigured && verificationToken) {
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-      let emailSent = false;
       try {
         await sendVerificationEmail(email, verificationToken, baseUrl);
         emailSent = true;
       } catch (emailError) {
         console.error("Failed to send verification email:", emailError);
-        // User is created, they can use resend functionality
       }
-
-      return NextResponse.json(
-        {
-          message: emailSent
-            ? "Account created. Please check your email to verify your account."
-            : "Account created. Please request a new verification email.",
-          requiresVerification: true,
-          emailSent,
-        },
-        { status: 201 }
-      );
     }
 
-    // Email verification disabled - user can log in immediately
     return NextResponse.json(
       {
-        message: "Account created. You can now log in.",
+        message: "Account created successfully.",
         requiresVerification: false,
+        emailSent,
       },
       { status: 201 }
     );
