@@ -295,7 +295,7 @@ ngrok http 3000
 
 ## Email Verification Setup
 
-Email verification is non-blocking. When SMTP credentials (`SMTP_USER` and `SMTP_PASSWORD`) are configured, verification emails are sent on registration, but users can log in and use the app immediately. OAuth accounts are pre-verified by the provider. No `EMAIL_VERIFICATION_ENABLED` env var is needed — SMTP credential presence auto-enables verification emails.
+Email verification is non-blocking. When SMTP credentials (`SMTP_USER` and `SMTP_PASSWORD`) are configured, verification emails are sent on registration, but users can log in and use the app immediately. OAuth accounts are pre-verified by the provider. SMTP credential presence auto-enables verification emails. To disable verification entirely (even with SMTP configured), set `EMAIL_VERIFICATION_ENABLED=false` as an emergency kill switch.
 
 ### Fastmail Setup (Recommended)
 
