@@ -7,7 +7,9 @@ import { z } from "zod";
 import { sendVerificationEmail } from "@/app/lib/email/email-service";
 import { checkRateLimit, getClientIp } from "@/app/lib/auth/rate-limiter";
 
+// Email verification is active when SMTP is configured and not explicitly disabled
 const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
+const emailVerificationActive = smtpConfigured && process.env.EMAIL_VERIFICATION_ENABLED !== "false";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -70,8 +72,8 @@ export async function POST(request: NextRequest) {
     // Create new user
     const userId = crypto.randomUUID();
     const passwordHash = await bcrypt.hash(password, 12);
-    const verificationToken = smtpConfigured ? crypto.randomUUID() : null;
-    const tokenExpires = smtpConfigured ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null; // 24 hours
+    const verificationToken = emailVerificationActive ? crypto.randomUUID() : null;
+    const tokenExpires = emailVerificationActive ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null; // 24 hours
 
     // Use transaction to ensure user, credentials, profile, and token are created atomically
     // If any insert fails, all changes are rolled back
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
           id: userId,
           email,
           name: name || email.split("@")[0],
-          emailVerified: null,
+          emailVerified: emailVerificationActive ? null : new Date(),
         });
 
         // Insert credentials
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Insert verification token if email verification is enabled
-        if (smtpConfigured && verificationToken && tokenExpires) {
+        if (emailVerificationActive && verificationToken && tokenExpires) {
           await tx.insert(schema.verificationTokens).values({
             identifier: email,
             token: verificationToken,
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     // Send verification email in the background if SMTP is configured
     let emailSent = false;
-    if (smtpConfigured && verificationToken) {
+    if (emailVerificationActive && verificationToken) {
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
       try {
         await sendVerificationEmail(email, verificationToken, baseUrl);
